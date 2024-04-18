@@ -1,0 +1,93 @@
+# 1
+import requests
+from bs4 import BeautifulSoup 
+from time import sleep
+import pandas as pd
+import matplotlib
+%matplotlib inline
+
+# 2
+url = 'https://hobbygames.ru/prikljuchenija'
+page_urls = [url]
+for i in range(2, 8):
+    page_urls.append(f'https://hobbygames.ru/prikljuchenija?page={i}&parameter_type=0')
+
+# 3
+urls = []
+names = []
+prices = []
+times = []
+players = []
+for i in page_urls:
+    page = requests.get(i)
+    soup = BeautifulSoup(page.text)
+    info = soup.find_all('div', {'class': 'product-item'})
+    for u in info:
+        urls.append(u.find_all('a', {'class': 'name'})[0].get('href'))
+        names.append(u.find_all('a', {'class': 'name'})[0].get('title'))
+        if u.find_all('span', {'class': 'price'}):
+            prices.append(float(u.find_all('span', {'class': 'price'})[0].text.strip().replace('\xa0', '').replace('₽', '').replace('100бон.', '0')))
+        else:
+            prices.append(0)
+        if u.find_all('div', {'class': 'params__item time'}):
+            times.append(u.find_all('div', {'class': 'params__item time'})[0].get('title'))
+        else:
+            times.append('Неизвестно')
+        if u.find_all('div', {'class': 'params__item players'}):
+            players.append(u.find_all('div', {'class': 'params__item players'})[0].get('title'))
+        else:
+            players.append('Неизвестно')
+        #sleep(2)
+        
+
+print(len(urls))
+print(len(names))
+print(len(prices))
+print(len(times))
+print(len(players))
+
+# 4
+for i in range(len(times)):
+    if times[i] != 'Неизвестно':
+        times[i] = (float(times[i].split()[-2]))
+
+# 5
+for i in range(len(players)):
+    if players[i] != 'Неизвестно':
+        players[i] = float(players[i].split()[-1])
+
+# 6
+games = {}
+for i in range(len(urls)):
+    games[names[i]] = [prices[i], times[i], players[i], urls[i]]
+
+# 7
+df = pd.DataFrame(games).transpose()
+df.columns = ['price', 'time', 'players', 'url']
+df = df[df['price'] != 0]
+df = df[df['time'] != 'Неизвестно']
+df = df[df['players'] != 99]
+df
+
+# 8
+df.price.mean()
+
+# 9
+df.time.mean()
+
+# 10
+df.players.mean()
+
+# 11
+df['price'].plot.hist(color = 'lightcoral', title = 'Средняя цена настолок')
+
+# 12
+df['time'].plot.hist(color = 'lightcoral', title = 'Среднее время игры')
+
+# 13
+df['players'].plot.hist(color = 'lightcoral', title = 'Среднее максимальное число игроков')
+
+# 14
+final_df = df[(df['price'] < 4000) & (df['time'] > 100) & (df['players'] > 4)]
+final_df
+
